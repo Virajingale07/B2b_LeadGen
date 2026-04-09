@@ -76,7 +76,7 @@ class LinkedInIdentitySource:
         score = 0
         if self.company_name.lower() in snippet.lower():
             score += 50
-        if any(kw in role.lower() for kw in ["manager", "head", "director", "ceo", "founder"]):
+        if any(kw in role.lower() for kw in ["manager", "head", "director", "ceo", "founder","Operations Manager"]):
             score += 30
         if "linkedin.com/in/" in snippet or "linkedin.com/in/" in name: # Placeholder for URL check
             score += 20
