@@ -32,7 +32,9 @@ class LinkedInIdentitySource:
                 identities = self.parse_google_results(resp.text)
         except Exception as e:
             st.error(f"Search failed: {e}")
-            
+        if resp.status_code != 200:
+            st.error(f"Google returned status code: {resp.status_code}")
+            # If 429, you are rate-limited. If 403, you are blocked.  
         return identities
 
     def parse_google_results(self, html):
