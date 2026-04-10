@@ -20,59 +20,59 @@ class LinkedInIdentitySource:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
         }
 
-    def fetch_identities(self):
-        # Target high-value roles via Google Dorking
-        query = f'site:linkedin.com/in/ "at {self.company_name}" (CEO OR Founder OR Director OR Manager OR Head)'
-        search_url = f"https://www.google.com/search?q={query}&num=10"
+   def fetch_identities(self):
+    query = f'site:linkedin.com/in/ "{self.company_name}" (CEO OR Founder OR Director OR Manager)'
+    # Use DuckDuckGo HTML search
+    search_url = f"https://html.duckduckgo.com/html/?q={query}"
+    
+    identities = []
+    try:
+        resp = requests.get(search_url, headers=self.headers, timeout=10)
         
-        identities = []
-        try:
-            resp = requests.get(search_url, headers=self.headers, timeout=10)
-            if resp.status_code == 200:
-                identities = self.parse_google_results(resp.text)
-        except Exception as e:
-            st.error(f"Search failed: {e}")
-        if resp.status_code != 200:
-            st.error(f"Google returned status code: {resp.status_code}")
-            # If 429, you are rate-limited. If 403, you are blocked.  
-        return identities
-
-    def parse_google_results(self, html):
-        soup = BeautifulSoup(html, "html.parser")
-        results = []
-        
-        # Google search results are typically in 'div.g' containers
-        for g in soup.select(".g"):
-            title_tag = g.select_one("h3")
-            link_tag = g.select_one("a")
-            snippet_tag = g.select_one(".VwiC3b") # Common class for snippets
+        if resp.status_code == 200:
+            identities = self.parse_duckduckgo_results(resp.text)
+        else:
+            st.error(f"DuckDuckGo returned status: {resp.status_code}")
             
-            if title_tag and link_tag:
-                raw_title = title_tag.get_text()
-                url = link_tag['href']
-                snippet = snippet_tag.get_text() if snippet_tag else ""
+    except Exception as e:
+        st.error(f"Search failed: {e}")
+        
+    return identities
+
+def parse_duckduckgo_results(self, html):
+    soup = BeautifulSoup(html, "html.parser")
+    results = []
+    
+    # DuckDuckGo uses different HTML structure
+    for result in soup.select(".result"):
+        title_tag = result.select_one(".result__a")
+        snippet_tag = result.select_one(".result__snippet")
+        
+        if title_tag:
+            url = title_tag.get('href', '')
+            raw_title = title_tag.get_text()
+            snippet = snippet_tag.get_text() if snippet_tag else ""
+            
+            if "linkedin.com/in/" not in url:
+                continue
+            
+            # Parse name and role
+            parts = raw_title.split("-")
+            name = parts[0].replace("| LinkedIn", "").strip()
+            role = parts[1].strip() if len(parts) > 1 else "Professional"
+            
+            if len(name.split()) >= 2:
+                score = self.calculate_confidence(name, role, snippet)
                 
-                # 1. Validate LinkedIn URL
-                if "linkedin.com/in/" not in url:
-                    continue
-                
-                # 2. Extract Name & Role from Title (Format: "Name - Role - Company")
-                # Most LinkedIn titles look like: "John Doe - CEO - Tesla | LinkedIn"
-                parts = raw_title.split("-")
-                name = parts[0].replace("| LinkedIn", "").strip()
-                role = parts[1].strip() if len(parts) > 1 else "Professional"
-                
-                if len(name.split()) >= 2:
-                    score = self.calculate_confidence(name, role, snippet)
-                    
-                    results.append({
-                        "company_id": self.company_id,
-                        "full_name": name,
-                        "role": role,
-                        "linkedin_url": url.split("?")[0], # Clean URL
-                        "confidence_score": score
-                    })
-        return results
+                results.append({
+                    "company_id": self.company_id,
+                    "full_name": name,
+                    "role": role,
+                    "linkedin_url": url.split("?")[0],
+                    "confidence_score": score
+                })
+    
+    return results
 
     def calculate_confidence(self, name, role, snippet):
         score = 0
