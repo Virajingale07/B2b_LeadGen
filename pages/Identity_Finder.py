@@ -44,7 +44,7 @@ def parse_duckduckgo_results(self, html):
     results = []
     
     # DuckDuckGo uses different HTML structure
-    for result in soup.select(".result"):
+    for results in soup.select(".result"):
         title_tag = result.select_one(".result__a")
         snippet_tag = result.select_one(".result__snippet")
         
